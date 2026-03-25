@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:capitalsense/features/login_page.dart';
 import 'package:capitalsense/features/signup_page.dart';
 import 'package:capitalsense/features/questionnaire_page.dart';
+import 'package:capitalsense/features/dashboard_page.dart';
+import 'package:capitalsense/features/admin_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,13 +15,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'CapitalSense',
-      theme: ThemeData(primarySwatch: Colors.teal),
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: Colors.white,
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
-        '/dashboard': (context) => const PlaceholderScreen(title: 'Dashboard Screen'),
+        '/dashboard': (context) => const DashboardScreen(),
+        '/admin': (context) => AdminProfileScreen(),
         '/questionnaire': (context) => const QuestionnaireScreen(),
       },
     );
