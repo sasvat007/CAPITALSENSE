@@ -86,18 +86,9 @@ async def extract_from_upload(
         raw_text = _extract_text(tmp_path, suffix)
         extracted = _parse_invoice(raw_text)
         
-        # 3. Smart Detection: User as Vendor = Receivable; User as Client = Payable
-        biz_name = (user.business_name or "").lower()
-        v_name = (extracted.get("vendor_name") or "").lower()
-        c_name = (extracted.get("client_name") or "").lower()
-
-        if biz_name and (biz_name in v_name or (len(biz_name) > 5 and biz_name[:5] in v_name)):
-            extracted["suggested_type"] = "receivable"
-        elif biz_name and (biz_name in c_name or (len(biz_name) > 5 and biz_name[:5] in c_name)):
-            extracted["suggested_type"] = "obligation"
-        else:
-            # Most users upload invoices they SENT for SUSS
-            extracted["suggested_type"] = "receivable" 
+        # 3. Smart Detection: All invoices are treated as Receivables per user requirement
+        # "what are the invoices i put is receivables and remaining all are payables"
+        extracted["suggested_type"] = "receivable" 
 
         extracted["raw_text_preview"] = raw_text[:500]
 

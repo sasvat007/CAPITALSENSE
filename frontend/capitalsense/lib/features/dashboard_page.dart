@@ -90,30 +90,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
       ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 25),
-              const Text("Quick Financial Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E))),
-              const SizedBox(height: 25),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildQuickActionItem(context, "Add Invoice", Icons.description, () => _handleInvoiceFlow(context)),
-                  _buildQuickActionItem(context, "Add Expense", Icons.payment, () => _showAddExpenseDialog(context)),
-                  _buildQuickActionItem(context, "Add Receipt", Icons.receipt, () => _showAddReceiptDialog(context)),
-                  _buildQuickActionItem(context, "Add Fund", Icons.add_business, () => _showAddFundDialog(context)),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
+      builder: (sheetCtx) {
+        bool isReceivable = true; // local toggle state
+        return StatefulBuilder(
+          builder: (context, setSheetState) => Container(
+            padding: const EdgeInsets.fromLTRB(25, 20, 25, 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 22),
+                const Text("Quick Financial Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E))),
+                const SizedBox(height: 18),
+
+                // ── Receivable / Payable Toggle ─────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(18)),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setSheetState(() => isReceivable = true),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isReceivable ? Colors.blue.shade700 : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: isReceivable ? [BoxShadow(color: Colors.blue.shade700.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))] : [],
+                            ),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.arrow_downward, size: 14, color: isReceivable ? Colors.white : Colors.black38),
+                                  const SizedBox(width: 6),
+                                  Text("RECEIVABLE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isReceivable ? Colors.white : Colors.black38)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setSheetState(() => isReceivable = false),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: !isReceivable ? Colors.red.shade700 : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: !isReceivable ? [BoxShadow(color: Colors.red.shade700.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))] : [],
+                            ),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.arrow_upward, size: 14, color: !isReceivable ? Colors.white : Colors.black38),
+                                  const SizedBox(width: 6),
+                                  Text("PAYABLE", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: !isReceivable ? Colors.white : Colors.black38)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    isReceivable ? "Money coming IN to you (clients owe you)" : "Money going OUT from you (you owe others)",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isReceivable ? Colors.blue.shade700 : Colors.red.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // ── Action Buttons ──────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildQuickActionItem(sheetCtx, "Upload Invoice", Icons.document_scanner, () => _handleInvoiceFlow(sheetCtx)),
+                    _buildQuickActionItem(sheetCtx, "Add Manually", Icons.edit_note, () => _showAddManualEntryDialog(sheetCtx, isReceivable)),
+                    _buildQuickActionItem(sheetCtx, "Add Fund", Icons.add_business, () => _showAddFundDialog(sheetCtx)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         );
       },
@@ -140,81 +217,190 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ── Add Expense Dialog ─────────────────────────────────────────────────────
+  // ── Add Manual Entry Dialog (Unified Receivable/Payable) ────────────────────
+
+  void _showAddManualEntryDialog(BuildContext sheetCtx, bool isReceivable) {
+    Navigator.pop(sheetCtx);
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final dateCtrl = TextEditingController();
+    bool entryIsReceivable = isReceivable;
+    // Capture the outer page context explicitly before showing dialog
+    final pageContext = context;
+
+    showDialog(
+      context: pageContext,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (_, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          title: Center(
+            child: Text(
+              entryIsReceivable ? "Add Receivable" : "Add Payable",
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E)),
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Toggle inside dialog too
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(14)),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setDialogState(() => entryIsReceivable = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: !entryIsReceivable ? Colors.red.shade700 : Colors.transparent,
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Center(child: Text("PAYABLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: !entryIsReceivable ? Colors.white : Colors.black45))),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setDialogState(() => entryIsReceivable = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: entryIsReceivable ? Colors.blue.shade700 : Colors.transparent,
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Center(child: Text("RECEIVABLE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: entryIsReceivable ? Colors.white : Colors.black45))),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _dialogTextField(nameCtrl, entryIsReceivable ? "Client Name" : "Vendor / Payee", Icons.business),
+                const SizedBox(height: 12),
+                _dialogTextField(descCtrl, "Description", Icons.description),
+                const SizedBox(height: 12),
+                _dialogTextField(amountCtrl, "Amount (₹)", Icons.currency_rupee, isNumber: true),
+                const SizedBox(height: 12),
+                _dialogDateField(dateCtrl, entryIsReceivable ? "Expected Date" : "Due Date", dialogCtx),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text("Cancel")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: entryIsReceivable ? Colors.blue.shade700 : Colors.red.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (amountCtrl.text.isEmpty || dateCtrl.text.isEmpty) return;
+                // Close dialog immediately so no black screen
+                Navigator.pop(dialogCtx);
+                try {
+                  if (entryIsReceivable) {
+                    await _api.createReceivable(
+                      clientName: nameCtrl.text.isNotEmpty ? nameCtrl.text : "Unknown Client",
+                      amount: double.parse(amountCtrl.text),
+                      dueDate: dateCtrl.text,
+                      description: descCtrl.text.isNotEmpty ? descCtrl.text : null,
+                    );
+                  } else {
+                    await _api.createObligation(
+                      description: descCtrl.text.isNotEmpty ? descCtrl.text : "Manual entry",
+                      amount: double.parse(amountCtrl.text),
+                      dueDate: dateCtrl.text,
+                      vendorName: nameCtrl.text.isNotEmpty ? nameCtrl.text : null,
+                    );
+                  }
+                  if (mounted) {
+                    ScaffoldMessenger.of(pageContext).showSnackBar(SnackBar(
+                      content: Text(entryIsReceivable ? "✓ Receivable added!" : "✓ Payable added!"),
+                      backgroundColor: entryIsReceivable ? Colors.blue.shade700 : Colors.red.shade700,
+                    ));
+                    _loadDashboard(); // refresh dashboard silently
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(pageContext).showSnackBar(
+                      SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: const Text("Save", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Add Expense Dialog (kept for legacy, now hidden from quick actions) ──────
 
   void _showAddExpenseDialog(BuildContext context) {
     final vendorCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
     final dateCtrl = TextEditingController();
-    String? selectedCategory = "General Expense";
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          title: const Center(child: Text("Add Expense", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E)))),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: InputDecoration(
-                    labelText: "Category",
-                    prefixIcon: const Icon(Icons.category, color: Color(0xFF0F5B44)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                  items: ["General Expense", "GST Payment", "Office Rent", "Salary / Wage", "Tax Payment", "Vendor Payment"]
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 13)))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedCategory = v),
-                ),
-                const SizedBox(height: 15),
-                _dialogTextField(vendorCtrl, "Vendor / Payee (opt)", Icons.business),
-                const SizedBox(height: 12),
-                _dialogTextField(descCtrl, "Description", Icons.description),
-                const SizedBox(height: 12),
-                _dialogTextField(amountCtrl, "Amount (₹)", Icons.currency_rupee, isNumber: true),
-                const SizedBox(height: 12),
-                _dialogDateField(dateCtrl, "Due Date", ctx),
-              ],
-            ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        title: const Center(child: Text("Add Expense", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E)))),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _dialogTextField(vendorCtrl, "Vendor / Payee (opt)", Icons.business),
+              const SizedBox(height: 12),
+              _dialogTextField(descCtrl, "Description", Icons.description),
+              const SizedBox(height: 12),
+              _dialogTextField(amountCtrl, "Amount (₹)", Icons.currency_rupee, isNumber: true),
+              const SizedBox(height: 12),
+              _dialogDateField(dateCtrl, "Due Date", ctx),
+            ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F5B44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              onPressed: () async {
-                if (amountCtrl.text.isEmpty || dateCtrl.text.isEmpty) return;
-                Navigator.pop(ctx);
-                setState(() => _isLoading = true);
-                try {
-                  await _api.createObligation(
-                    description: "${selectedCategory}: ${descCtrl.text}",
-                    amount: double.parse(amountCtrl.text),
-                    dueDate: dateCtrl.text,
-                    vendorName: vendorCtrl.text.isNotEmpty ? vendorCtrl.text : null,
-                  );
-                  _loadDashboard();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Expense added successfully!"), backgroundColor: Color(0xFF0F5B44)),
-                    );
-                  }
-                } catch (e) {
-                  setState(() => _isLoading = false);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-                    );
-                  }
-                }
-              },
-              child: const Text("Add", style: TextStyle(color: Colors.white)),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F5B44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            onPressed: () async {
+              if (amountCtrl.text.isEmpty || dateCtrl.text.isEmpty) return;
+              Navigator.pop(ctx);
+              setState(() => _isLoading = true);
+              try {
+                await _api.createObligation(
+                  description: descCtrl.text,
+                  amount: double.parse(amountCtrl.text),
+                  dueDate: dateCtrl.text,
+                  vendorName: vendorCtrl.text.isNotEmpty ? vendorCtrl.text : null,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Expense added successfully!"), backgroundColor: Color(0xFF0F5B44)),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isLoading = false);
+                _loadDashboard();
+              }
+            },
+            child: const Text("Add", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -611,21 +797,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecentRecordsSection() {
     return FutureBuilder(
-      future: Future.wait([_api.getObligations(), _api.getFunds()]),
+      future: Future.wait([_api.getObligations(), _api.getReceivables(), _api.getFunds()]),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final obligations = snapshot.data![0] as List;
-        final funds = snapshot.data![1] as List;
+        final receivables = snapshot.data![1] as List;
+        final funds = snapshot.data![2] as List;
 
-        if (obligations.isEmpty && funds.isEmpty) return const SizedBox.shrink();
+        if (obligations.isEmpty && receivables.isEmpty && funds.isEmpty) return const SizedBox.shrink();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text("Recent Insights", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0B3B2E))),
             const SizedBox(height: 15),
+            if (receivables.isNotEmpty) ...[
+              Text("Invoices (Receivables)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+              const SizedBox(height: 8),
+              ...receivables.take(3).map((r) => _buildRecordItem(r, Colors.blue.shade700)).toList(),
+              const SizedBox(height: 15),
+            ],
             if (obligations.isNotEmpty) ...[
-              const Text("Obligations", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black45)),
+              Text("Obligations (Payables)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
               const SizedBox(height: 8),
               ...obligations.take(3).map((o) => _buildRecordItem(o, Colors.red.shade700)).toList(),
               const SizedBox(height: 15),
@@ -744,6 +937,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final fs = _dashboardData?['financial_state'] ?? {};
     final balance = (fs['available_balance'] as num?)?.toDouble() ?? 0;
     final cash = (fs['available_cash'] as num?)?.toDouble() ?? 0;
+    
     final payablesTotal = (fs['total_payables'] as num?)?.toDouble() ?? 0;
     final receivablesTotal = (fs['total_receivables'] as num?)?.toDouble() ?? 0;
 
@@ -759,9 +953,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _buildLiveMetricCard("RECEIVABLES (TOTAL)", _formatCurrency(receivablesTotal), Icons.arrow_downward, Colors.blue.shade700)),
+            Expanded(child: _buildLiveMetricCard("RECEIVABLES", _formatCurrency(receivablesTotal), Icons.arrow_upward, Colors.blue.shade700)),
             const SizedBox(width: 12),
-            Expanded(child: _buildLiveMetricCard("PAYABLES (TOTAL)", _formatCurrency(payablesTotal), Icons.arrow_upward, Colors.red.shade700)),
+            Expanded(child: _buildLiveMetricCard("PAYABLES", _formatCurrency(payablesTotal), Icons.arrow_downward, Colors.red.shade700)),
           ],
         ),
       ],
