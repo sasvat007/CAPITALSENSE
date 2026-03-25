@@ -116,68 +116,118 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.info_outline, size: 40, color: Colors.grey),
-              SizedBox(height: 12),
-              Text("No strategy data yet", style: TextStyle(color: Colors.black54)),
-              SizedBox(height: 6),
-              Text("Add obligations and funds to generate strategies", textAlign: TextAlign.center, style: TextStyle(color: Colors.black38, fontSize: 12)),
+              Icon(Icons.query_stats, size: 45, color: Colors.grey),
+              SizedBox(height: 16),
+              Text("No strategy data yet", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16)),
+              SizedBox(height: 8),
+              Text("Add your invoices and expenses to generate AI strategies", textAlign: TextAlign.center, style: TextStyle(color: Colors.black45, fontSize: 13)),
             ],
           ),
         ),
       );
     }
 
+    final overall = decisions['overall_recommendation'] ?? '';
+    final base = decisions['base_case'];
+    final strategy = (base?['recommended_strategy'] as String?)?.toUpperCase() ?? 'BALANCED';
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildOverallRecommendation(decisions['overall_recommendation'] ?? ''),
-          const SizedBox(height: 20),
+          // ── Strategic Summary Row ──────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(child: _buildStrategyMetric("RECOMMENDED", strategy, Icons.star, const Color(0xFF0B3B2E))),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStrategyMetric("SCENARIOS", "3 PROJECTIONS", Icons.layers, Colors.blue.shade700)),
+            ],
+          ),
+          const SizedBox(height: 25),
+          
+          _buildAIInsightCard(overall),
+          const SizedBox(height: 30),
+          
+          Text("DETAILED SCENARIOS", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.2)),
+          const SizedBox(height: 16),
+          
           _buildScenarioSection("BASE CASE", decisions['base_case'], const Color(0xFF0F5B44)),
           const SizedBox(height: 16),
           _buildScenarioSection("BEST CASE", decisions['best_case'], Colors.blue.shade700),
           const SizedBox(height: 16),
           _buildScenarioSection("WORST CASE", decisions['worst_case'], Colors.red.shade700),
-          const SizedBox(height: 80),
+          
+          const SizedBox(height: 120),
         ],
       ),
     );
   }
 
-  Widget _buildOverallRecommendation(String text) {
-    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+  Widget _buildStrategyMetric(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF0F5B44).withOpacity(0.06), Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF0F5B44).withOpacity(0.2)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, color: const Color(0xFF0F5B44), size: 18),
-              const SizedBox(width: 8),
-              const Text("Overall Recommendation", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0B3B2E))),
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black45)),
             ],
           ),
-          const SizedBox(height: 10),
-          ...lines.take(8).map((line) => Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Text(
-                  line.trim(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.black54,
-                    fontWeight: line.contains('===') || line.contains('Case') ? FontWeight.bold : FontWeight.normal,
-                  ),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIInsightCard(String text) {
+    if (text.isEmpty) return const SizedBox.shrink();
+    
+    // Simplistic formatting for AI text
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty && !l.contains('===')).toList();
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B3B2E),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [BoxShadow(color: const Color(0xFF0B3B2E).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb, color: Color(0xFF1B7A5A), size: 24),
+              SizedBox(width: 12),
+              Text("Strategic Insight", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...lines.take(6).map((line) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("•", style: TextStyle(color: Color(0xFF1B7A5A), fontSize: 18)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        line.trim(),
+                        style: const TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
+                      ),
+                    ),
+                  ],
                 ),
               )),
         ],
@@ -190,46 +240,62 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
 
     final recommended = data['recommended_strategy'] ?? '';
     final reasoning = data['reasoning'] ?? '';
-    final cashAvail = (data['cash_available'] as num?)?.toDouble();
+    final balanced = data['balanced'] as Map<String, dynamic>? ?? {};
+    final survival = (balanced['survival_probability'] as num?)?.toDouble() ?? 0;
+    final cashAfter = (balanced['estimated_cash_after'] as num?)?.toDouble() ?? 0;
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withOpacity(0.15)),
         color: Colors.white,
+        boxShadow: [BoxShadow(color: color.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.assessment, color: color, size: 20),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+            child: Icon(Icons.show_chart, color: color, size: 22),
           ),
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
-          subtitle: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-                child: Text(recommended, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-              ),
-              if (cashAvail != null) ...[
-                const SizedBox(width: 8),
-                Text(_formatCurrency(cashAvail), style: const TextStyle(fontSize: 11, color: Colors.black45)),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 15, letterSpacing: 0.5)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                _buildScenarioPill(recommended, color),
+                const SizedBox(width: 12),
+                _buildScenarioPill("${survival.toStringAsFixed(0)}% Odds", survival >= 70 ? const Color(0xFF0F5B44) : Colors.orange),
+                const SizedBox(width: 12),
+                Text(_formatCurrency(cashAfter), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black45)),
               ],
-            ],
+            ),
           ),
           initiallyExpanded: title == "BASE CASE",
           children: [
-            Text(reasoning, style: const TextStyle(fontSize: 11, color: Colors.black45, height: 1.4)),
+            const Divider(),
             const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
+              child: Text(reasoning, style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.5)),
+            ),
+            const SizedBox(height: 16),
             _buildStrategyComparison(data, color),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildScenarioPill(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+      child: Text(text.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
@@ -381,15 +447,25 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
 
   Widget _buildSimulationView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSimulationForm(),
-          const SizedBox(height: 20),
-          if (_isSimulating) const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: Color(0xFF0F5B44)))),
-          if (_simResult != null && !_isSimulating) _buildSimulationResults(),
-          const SizedBox(height: 80),
+          const SizedBox(height: 30),
+          if (_isSimulating) 
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40), 
+                child: CircularProgressIndicator(color: Color(0xFF0F5B44))
+              )
+            ),
+          if (_simResult != null && !_isSimulating) ...[
+            Text("DETAILED PROJECTION", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black45, letterSpacing: 1.2)),
+            const SizedBox(height: 16),
+            _buildSimulationResults(),
+          ],
+          const SizedBox(height: 120),
         ],
       ),
     );
@@ -397,69 +473,77 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
 
   Widget _buildSimulationForm() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.science, color: Color(0xFF0F5B44), size: 20),
-              const SizedBox(width: 8),
-              const Text("What-If Scenario", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0B3B2E))),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFF0F5B44).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.psychology, color: Color(0xFF0F5B44), size: 24),
+              ),
+              const SizedBox(width: 15),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("What-If Scenario", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0B3B2E))),
+                  Text("Test liquidity across risk appetites", style: TextStyle(fontSize: 11, color: Colors.black45)),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          const Text("Simulate different cash positions and risk appetites", style: TextStyle(fontSize: 11, color: Colors.black45)),
-          const SizedBox(height: 18),
+          const SizedBox(height: 25),
           TextField(
             controller: _balanceCtrl,
             keyboardType: TextInputType.number,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             decoration: InputDecoration(
-              labelText: "Cash Balance Override (₹)",
-              hintText: "Leave empty for current balance",
-              prefixIcon: const Icon(Icons.currency_rupee, color: Color(0xFF0F5B44), size: 20),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              labelText: "Simulation Balance (₹)",
+              hintText: "Enter amount to test",
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              prefixIcon: const Icon(Icons.account_balance_wallet, color: Color(0xFF0F5B44), size: 20),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: Colors.grey.shade300)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: Colors.grey.shade200)),
               filled: true,
               fillColor: Colors.grey.shade50,
             ),
           ),
-          const SizedBox(height: 14),
-          const Text("Risk Appetite", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          const Text("Risk Strategy Level", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
           Row(
             children: ["AGGRESSIVE", "MODERATE", "CONSERVATIVE"].map((level) {
               final isSelected = _riskLevel == level;
               Color chipColor;
               switch (level) {
-                case "AGGRESSIVE":
-                  chipColor = Colors.red.shade600;
-                  break;
-                case "CONSERVATIVE":
-                  chipColor = Colors.blue.shade700;
-                  break;
-                default:
-                  chipColor = const Color(0xFF0F5B44);
+                case "AGGRESSIVE": chipColor = Colors.red.shade700; break;
+                case "CONSERVATIVE": chipColor = Colors.blue.shade700; break;
+                default: chipColor = const Color(0xFF0F5B44);
               }
               return Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() => _riskLevel = level),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: isSelected ? chipColor.withOpacity(0.12) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSelected ? chipColor : Colors.grey.shade200, width: isSelected ? 2 : 1),
+                      color: isSelected ? chipColor : Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: isSelected ? chipColor : Colors.grey.shade200),
+                      boxShadow: isSelected ? [BoxShadow(color: chipColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))] : [],
                     ),
                     child: Center(
                       child: Text(
                         level,
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isSelected ? chipColor : Colors.black38, letterSpacing: 0.5),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black45),
                       ),
                     ),
                   ),
@@ -467,18 +551,18 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 25),
           SizedBox(
             width: double.infinity,
-            height: 50,
-            child: ElevatedButton.icon(
+            height: 55,
+            child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F5B44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                elevation: 4, shadowColor: const Color(0xFF0F5B44).withOpacity(0.4),
               ),
-              icon: const Icon(Icons.play_arrow, color: Colors.white),
-              label: const Text("Run Simulation", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
               onPressed: _isSimulating ? null : _runSimulation,
+              child: const Text("RUN SIMULATION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
             ),
           ),
         ],
@@ -511,118 +595,76 @@ class _StrategyTabState extends State<StrategyTab> with SingleTickerProviderStat
     final runway = _simResult?['cash_runway_days'];
     final recommendation = _simResult?['recommendation'] ?? '';
     final overallRec = _simResult?['overall_recommendation'] ?? '';
-    final overrides = _simResult?['scenario_overrides'] as Map<String, dynamic>? ?? {};
 
     Color healthColor = healthScore >= 70
         ? const Color(0xFF0F5B44)
-        : healthScore >= 40
-            ? Colors.orange.shade800
-            : Colors.red.shade700;
+        : healthScore >= 40 ? Colors.orange.shade800 : Colors.red.shade700;
 
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: healthColor.withOpacity(0.3)),
-        boxShadow: [BoxShadow(color: healthColor.withOpacity(0.08), blurRadius: 12)],
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: healthColor.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.insights, color: Color(0xFF0B3B2E), size: 20),
-              const SizedBox(width: 8),
-              const Text("Simulation Results", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0B3B2E))),
+              const Text("Simulated Health", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF0B3B2E))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: healthColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                child: Text("$healthScore / 100", style: TextStyle(fontWeight: FontWeight.bold, color: healthColor, fontSize: 13)),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Scenario overrides tag
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: overrides.entries.map((e) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-                child: Text("${e.key}: ${e.value}", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-
-          // Health + Runway row
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: healthColor.withOpacity(0.06), borderRadius: BorderRadius.circular(16)),
-                  child: Column(
-                    children: [
-                      Text("$healthScore", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: healthColor)),
-                      const Text("Health Score", style: TextStyle(fontSize: 10, color: Colors.black45)),
-                    ],
-                  ),
-                ),
+                child: _buildSimMetricCard("CASH RUNWAY", runway != null ? "$runway days" : "∞", Icons.timer, Colors.blue.shade700),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(16)),
-                  child: Column(
-                    children: [
-                      Text(runway != null ? "$runway" : "∞", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
-                      const Text("Runway (days)", style: TextStyle(fontSize: 10, color: Colors.black45)),
-                    ],
-                  ),
-                ),
+                child: _buildSimMetricCard("STRATEGY", recommendation, Icons.psychology_outlined, const Color(0xFF0F5B44)),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Recommendation badge
+          const SizedBox(height: 20),
+          const Text("EXPLAINABILITY", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38, letterSpacing: 1)),
+          const SizedBox(height: 10),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: healthColor.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: healthColor.withOpacity(0.2)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb, color: healthColor, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Recommended Strategy", style: TextStyle(fontSize: 10, color: Colors.black45)),
-                      Text(recommendation, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: healthColor)),
-                    ],
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade100)),
+            child: Text(
+              overallRec,
+              style: const TextStyle(fontSize: 12, color: Colors.black54, height: 1.6),
             ),
           ),
-          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
 
-          // Overall recommendation text
-          if (overallRec.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(14)),
-              child: Text(
-                overallRec.length > 500 ? "${overallRec.substring(0, 500)}..." : overallRec,
-                style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.5),
-              ),
-            ),
+  Widget _buildSimMetricCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black38)),
         ],
       ),
     );
