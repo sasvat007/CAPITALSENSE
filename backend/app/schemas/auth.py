@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
-
 class SignupRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
@@ -13,11 +12,9 @@ class SignupRequest(BaseModel):
 
     model_config = {"str_strip_whitespace": True}
 
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -25,10 +22,18 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     requires_questionnaire: bool = False
 
-
 class RefreshRequest(BaseModel):
     refresh_token: str
 
-
 class LogoutRequest(BaseModel):
     refresh_token: str
+
+class UserMeResponse(BaseModel):
+    full_name: str
+    email: EmailStr
+    business_name: str
+    office_address: Optional[str] = None
+    questionnaire_completed: bool
+
+    class Config:
+        from_attributes = True

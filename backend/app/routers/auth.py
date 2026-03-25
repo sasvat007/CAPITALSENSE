@@ -4,7 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user, get_client_ip
 from app.models.user import User
-from app.schemas.auth import SignupRequest, LoginRequest, TokenResponse, RefreshRequest, LogoutRequest
+from app.schemas.auth import (
+    SignupRequest, LoginRequest, TokenResponse, RefreshRequest, LogoutRequest, UserMeResponse
+)
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -40,3 +42,9 @@ async def logout(
     db: AsyncSession = Depends(get_db),
 ):
     await auth_service.logout(payload.refresh_token, current_user, db)
+
+
+@router.get("/me", response_model=UserMeResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Fetch current user's profile details."""
+    return current_user

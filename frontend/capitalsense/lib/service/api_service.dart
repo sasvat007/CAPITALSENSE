@@ -110,6 +110,24 @@ class ApiService {
     await clearTokens();
   }
 
+  Future<Map<String, dynamic>> getProfile() async {
+    final accessToken = await getAccessToken();
+    final response = await http.get(
+      Uri.parse("$baseUrl/auth/me"),
+      headers: {
+        "accept": "application/json",
+        "Authorization": "Bearer $accessToken"
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      _handleError(response, "Failed to load profile");
+      return {};
+    }
+  }
+
   // ── Questionnaire Methods ──────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> checkQuestionnaireDue() async {
