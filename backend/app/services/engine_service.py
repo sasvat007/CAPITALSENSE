@@ -13,6 +13,7 @@ import math
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models.user import User
@@ -36,6 +37,21 @@ from deterministic_decision_engine import make_payment_decisions
 from deterministic_decision_engine.models import VendorRelationship, VendorRelationshipType
 
 logger = logging.getLogger(__name__)
+
+
+def _obligation_analysis_sort_key(obligation: Obligation) -> tuple[int, date, int, datetime, str]:
+    """Keep engine inputs in a stable urgency order so UI rankings reflow predictably."""
+    due = obligation.due_date if isinstance(obligation.due_date, date) else date.fromisoformat(str(obligation.due_date))
+    status_rank = {
+        ObligationStatus.overdue: 0,
+        ObligationStatus.pending: 1,
+        ObligationStatus.partially_paid: 1,
+        ObligationStatus.deferred: 2,
+        ObligationStatus.paid: 3,
+    }.get(obligation.status, 1)
+    priority_rank = obligation.priority_rank if obligation.priority_rank is not None else 999999
+    created_at = obligation.created_at if isinstance(obligation.created_at, datetime) else datetime.min
+    return (status_rank, due, priority_rank, created_at, obligation.id)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -122,9 +138,9 @@ async def _load_user_data(user: User, db: AsyncSession) -> dict:
     ob_result = await db.execute(
         select(Obligation).where(
             and_(Obligation.user_id == user.id, Obligation.deleted_at.is_(None))
-        )
+        ).options(selectinload(Obligation.vendor))
     )
-    obligations = ob_result.scalars().all()
+    obligations = sorted(ob_result.scalars().all(), key=_obligation_analysis_sort_key)
     total_paid = sum(o.amount_paid for o in obligations)
 
     # Receivables
@@ -318,7 +334,7 @@ def _build_analysis_response(data: dict, fs, risk, decisions) -> dict:
             "amount_paid": o.amount_paid,
             "due_date": o.due_date.isoformat() if hasattr(o.due_date, "isoformat") else str(o.due_date),
             "status": o.status
-        } for o in data.get("obligations", [])],
+        } for o in data.get("obligations", []) if o.status != ObligationStatus.paid and (o.amount - o.amount_paid) > 0],
         "receivables": [{
             "id": r.id,
             "client_name": r.client_name,
@@ -326,7 +342,7 @@ def _build_analysis_response(data: dict, fs, risk, decisions) -> dict:
             "amount_received": r.amount_received,
             "due_date": r.due_date.isoformat() if hasattr(r.due_date, "isoformat") else str(r.due_date),
             "status": r.status
-        } for r in data.get("receivables", [])],
+        } for r in data.get("receivables", []) if r.status != ReceivableStatus.received and (r.amount - r.amount_received) > 0],
     }
 
     # Risk Detection (Engine 2)

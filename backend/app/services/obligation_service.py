@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
 from app.models.obligation import Obligation, ObligationStatus
@@ -103,12 +104,14 @@ async def mark_paid(
 
     # Rebuild financial state and call ML
     dashboard, ml_resp = await ml_helpers.rebuild_and_prioritize(user, db)
+    priorities = [p.model_dump() for p in ml_resp.priorities] if ml_resp else []
+    alerts = ml_resp.alerts if ml_resp else []
 
     return MarkPaidResponse(
         obligation=ObligationOut.model_validate(ob),
         new_balance=dashboard.available_balance,
-        priorities=[p.model_dump() for p in ml_resp.priorities],
-        alerts=ml_resp.alerts,
+        priorities=priorities,
+        alerts=alerts,
     )
 
 
@@ -126,6 +129,7 @@ async def defer_obligation(
     ob.status = ObligationStatus.deferred
     
     await db.flush()
+    await ml_helpers.rebuild_and_prioritize(user, db)
     await write_audit_log(db, "DEFER_OBLIGATION", user.id, "obligation", ob.id, 
                           extra={"days": days, "new_due_date": ob.due_date.isoformat()})
     
@@ -143,7 +147,7 @@ async def _fetch_or_404(ob_id: str, user_id: str, db: AsyncSession) -> Obligatio
         select(Obligation).where(
             and_(Obligation.id == ob_id, Obligation.user_id == user_id,
                  Obligation.deleted_at.is_(None))
-        )
+        ).options(selectinload(Obligation.vendor))
     )
     ob = result.scalar_one_or_none()
     if not ob:
