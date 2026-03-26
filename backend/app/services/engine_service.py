@@ -162,6 +162,8 @@ async def _get_questionnaire(user: User, db: AsyncSession) -> QuestionnaireRespo
     return result.scalar_one_or_none()
 
 
+from app.utils.financial import categorize_description
+
 # ── Model Converters (DB → Engine Input) ──────────────────────────────────────
 
 def _build_payables(obligations: list[Obligation]) -> list[Payable]:
@@ -184,6 +186,9 @@ def _build_payables(obligations: list[Obligation]) -> list[Payable]:
         else:
             status = "pending"
 
+        v_name = o.vendor.name if o.vendor else ""
+        category = categorize_description(o.description or "", v_name)
+
         payables.append(Payable(
             id=o.id,
             amount=remaining,
@@ -191,7 +196,7 @@ def _build_payables(obligations: list[Obligation]) -> list[Payable]:
             description=o.description or "Obligation",
             status=status,
             priority_level="high" if o.priority_rank and o.priority_rank <= 3 else "normal",
-            category="supplier",
+            category=category,
         ))
     return payables
 

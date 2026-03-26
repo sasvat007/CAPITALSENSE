@@ -392,6 +392,25 @@ class ApiService {
 
   // ── Utils ──────────────────────────────────────────────────────────────────
 
+  Future<Map<String, dynamic>> createPaymentLink(String obligationId, double amount) async {
+    final headers = await _authHeaders();
+    final body = {
+      "obligation_id": obligationId,
+      "amount": amount,
+    };
+    final response = await http.post(
+      Uri.parse("$baseUrl/payments/create"),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      _handleError(response, "Failed to create payment link");
+      return {};
+    }
+  }
+
   void _handleError(http.Response response, String defaultMsg) {
     try {
       final decoded = jsonDecode(response.body);

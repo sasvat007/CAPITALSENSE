@@ -5,6 +5,7 @@ import 'package:capitalsense/features/admin_page.dart';
 import 'package:capitalsense/features/strategy_tab.dart';
 import 'package:capitalsense/widgets/animated_background.dart';
 import 'package:capitalsense/service/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -496,6 +497,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F5B44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             onPressed: () async {
               if (sourceCtrl.text.isEmpty || amountCtrl.text.isEmpty || dateCtrl.text.isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(ctx);
               try {
                 await _api.createFund(
@@ -505,13 +507,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
                 _loadDashboard();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(content: Text("Fund added!"), backgroundColor: Color(0xFF0F5B44)),
                   );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
                   );
                 }
@@ -1321,13 +1323,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (isObligation) canMark = status != 'paid';
     if (isReceivable) canMark = status != 'received';
 
+    final isTax = desc.toUpperCase().contains('GST') || desc.toUpperCase().contains('TAX') || desc.toUpperCase().contains('TDS');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: isTax ? Colors.red.shade200 : Colors.grey.shade100, width: isTax ? 1.5 : 1),
       ),
       child: Row(
         children: [
@@ -1335,7 +1339,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(desc, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                Row(
+                  children: [
+                    Text(desc, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    if (isTax) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(6)),
+                        child: const Text("TAX/LEGAL", style: TextStyle(fontSize: 7, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -1359,6 +1375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(_formatCurrency(amount), style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
               if (canMark) ...[
                 const SizedBox(height: 4),
+                // Mark Paid / Mark Received button
                 GestureDetector(
                   onTap: () => _handleMarkAction(item, isObligation),
                   child: Container(
@@ -1373,6 +1390,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
+                // PAY NOW via Setu — only for obligations
+                if (isObligation) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => _handleSetuPay(item),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6A4CE0), Color(0xFF3A77E8)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        "PAY NOW",
+                        style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -1410,6 +1447,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         _loadDashboard(); // This also clears _isLoading
       }
+    }
+  }
+
+  Future<void> _handleSetuPay(Map<String, dynamic> item) async {
+    final id = item['id'];
+    final total = (item['amount'] as num?)?.toDouble() ?? 0;
+    final paid = (item['amount_paid'] as num?)?.toDouble() ?? 0;
+    final remaining = total - paid;
+    if (remaining <= 0) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final result = await _api.createPaymentLink(id, remaining);
+      final paymentLink = result['payment_link'] as String? ?? '';
+      if (paymentLink.isNotEmpty) {
+        final uri = Uri.parse(paymentLink);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Could not open payment link"), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No payment link returned from Setu"), backgroundColor: Colors.orange),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Payment error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -85,6 +85,12 @@ async def mark_paid(
     if payload.amount > remaining + 0.01:
         raise HTTPException(status_code=400, detail="Payment exceeds remaining amount")
 
+    from app.utils.financial import categorize_description, is_must_pay_in_full
+    v_name = ob.vendor.name if ob.vendor else ""
+    cat = categorize_description(ob.description or "", v_name)
+    if is_must_pay_in_full(cat) and payload.payment_type == "partial":
+        raise HTTPException(status_code=400, detail=f"{cat} obligations cannot be partially paid. Full payment required.")
+
     ob.amount_paid = (ob.amount_paid or 0.0) + payload.amount
     ob.status = (
         ObligationStatus.paid
