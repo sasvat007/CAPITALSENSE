@@ -85,7 +85,7 @@ async def mark_paid(
     if payload.amount > remaining + 0.01:
         raise HTTPException(status_code=400, detail="Payment exceeds remaining amount")
 
-    ob.amount_paid += payload.amount
+    ob.amount_paid = (ob.amount_paid or 0.0) + payload.amount
     ob.status = (
         ObligationStatus.paid
         if payload.payment_type == "full" or ob.amount_paid >= ob.amount - 0.01

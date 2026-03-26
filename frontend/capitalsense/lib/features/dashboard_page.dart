@@ -220,7 +220,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ── Add Manual Entry Dialog (Unified Receivable/Payable) ────────────────────
 
   void _showAddManualEntryDialog(BuildContext sheetCtx, bool isReceivable) {
-    Navigator.pop(sheetCtx);
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -1315,6 +1314,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final amount = (item['amount'] as num?)?.toDouble() ?? 0;
     final status = item['status'] ?? '';
     final dueDate = item['due_date'] ?? item['date_received'] ?? '';
+    
+    final isObligation = item.containsKey('amount_paid');
+    final isReceivable = item.containsKey('amount_received');
+    bool canMark = false;
+    if (isObligation) canMark = status != 'paid';
+    if (isReceivable) canMark = status != 'received';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1338,7 +1343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                        child: Text(status, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+                        child: Text(status.toString().toUpperCase(), style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -1348,10 +1353,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          Text(_formatCurrency(amount), style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_formatCurrency(amount), style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 13)),
+              if (canMark) ...[
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () => _handleMarkAction(item, isObligation),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      isObligation ? "MARK PAID" : "MARK RECVD",
+                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleMarkAction(Map<String, dynamic> item, bool isObligation) async {
+    final total = (item['amount'] as num?)?.toDouble() ?? 0;
+    final settledAlready = (isObligation ? item['amount_paid'] : item['amount_received'] as num?)?.toDouble() ?? 0;
+    final remaining = total - settledAlready;
+    final id = item['id'];
+    
+    // Optimistic loading
+    setState(() => _isLoading = true);
+    try {
+      if (isObligation) {
+        await _api.markObligationPaid(id, remaining, isFull: true);
+      } else {
+        await _api.markReceivableReceived(id, remaining, isFull: true);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isObligation ? "✓ Marked as Paid" : "✓ Marked as Received"), backgroundColor: const Color(0xFF0F5B44)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Action failed: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _loadDashboard(); // This also clears _isLoading
+      }
+    }
   }
 
   // ── Bottom Nav ─────────────────────────────────────────────────────────────

@@ -188,6 +188,25 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> markObligationPaid(String obId, double amount, {bool isFull = true}) async {
+    final headers = await _authHeaders();
+    final body = {
+      "payment_type": isFull ? "full" : "partial",
+      "amount": amount,
+    };
+    final response = await http.patch(
+      Uri.parse("$baseUrl/obligations/$obId/mark-paid"),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      _handleError(response, "Failed to mark obligation as paid");
+      return {};
+    }
+  }
+
   // ── Receivables ───────────────────────────────────────────────────────────
 
   Future<List<dynamic>> getReceivables() async {
@@ -222,6 +241,25 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       _handleError(response, "Failed to create receivable");
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> markReceivableReceived(String recId, double amount, {bool isFull = true}) async {
+    final headers = await _authHeaders();
+    final body = {
+      "payment_type": isFull ? "full" : "partial",
+      "amount": amount,
+    };
+    final response = await http.patch(
+      Uri.parse("$baseUrl/receivables/$recId/mark-received"),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      _handleError(response, "Failed to mark receivable as received");
       return {};
     }
   }

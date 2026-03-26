@@ -33,25 +33,38 @@ async def list_all(user: User, db: AsyncSession) -> List[ReceivableOut]:
     return [ReceivableOut.model_validate(r) for r in result.scalars().all()]
 
 
+
 async def mark_received(
     rec_id: str, payload: MarkReceivedRequest, user: User, db: AsyncSession
 ) -> ReceivableOut:
-    rec = await _fetch_or_404(rec_id, user.id, db)
-    remaining = rec.amount - rec.amount_received
+    try:
+        rec = await _fetch_or_404(rec_id, user.id, db)
+        remaining = rec.amount - rec.amount_received
 
-    if payload.amount > remaining + 0.01:
-        raise HTTPException(status_code=400, detail="Amount exceeds remaining receivable")
+        if payload.amount > remaining + 0.01:
+            raise HTTPException(status_code=400, detail="Amount exceeds remaining receivable")
 
-    rec.amount_received += payload.amount
-    rec.status = (
-        ReceivableStatus.received
-        if payload.payment_type == "full" or rec.amount_received >= rec.amount - 0.01
-        else ReceivableStatus.partially_received
-    )
-    await db.flush()
-    await write_audit_log(db, "MARK_RECEIVED", user.id, "receivable", rec.id,
-                          extra={"amount": payload.amount})
-    return ReceivableOut.model_validate(rec)
+        rec.amount_received = (rec.amount_received or 0.0) + payload.amount
+        rec.status = (
+            ReceivableStatus.received
+            if payload.payment_type == "full" or rec.amount_received >= rec.amount - 0.01
+            else ReceivableStatus.partially_received
+        )
+        await db.flush()
+        
+        await write_audit_log(db, "MARK_RECEIVED", user.id, "receivable", rec.id,
+                              extra={"amount": payload.amount})
+        
+        # Re-prioritize dashboard
+        from app.services import ml_helpers
+        await ml_helpers.rebuild_and_prioritize(user, db)
+        
+        return ReceivableOut.model_validate(rec)
+    except Exception as e:
+        import traceback
+        print(f"ERROR in mark_received: {e}")
+        traceback.print_exc()
+        raise
 
 
 async def _fetch_or_404(rec_id: str, user_id: str, db: AsyncSession) -> Receivable:
