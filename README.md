@@ -350,16 +350,3 @@ Small business owners are highly sensitive about financial data privacy. The sys
 | Chain-of-thought explainability | None | None | None | **Full** |
 | Handwritten receipt ingestion | None | Limited | Limited | **Full** |
 | Mobile-native | Partial | Partial | No | **Full** |
-
----
-
-## Team
-
-**Team Name:** RUSS  
-**Team Leader:** Siddharth S  
-
----
-
-## License
-
-All rights reserved by Team RUSS.
