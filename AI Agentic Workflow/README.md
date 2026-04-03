@@ -1,1 +1,1 @@
-### Agentic AI workflow for automatic email creation and dispatch for vendor negotiation
+### n8n Agentic AI workflow for automatic email creation and dispatch for vendor negotiation
